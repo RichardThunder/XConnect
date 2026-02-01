@@ -1,0 +1,87 @@
+# 单独构建 Linux（deb + rpm + zip），使用所选分支的最新代码
+# 用法：Actions → "Build Linux" → Run workflow，选择分支后运行
+
+name: Build Linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（用于包名，如 1.0.0 或 dev）'
+        required: false
+        default: 'dev'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'packaging/**'
+      - '.github/workflows/build-linux.yml'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Fyne (CGO) build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev libxkbcommon-dev
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: go.sum
+
+      - name: Go mod tidy
+        run: go mod tidy
+
+      - name: Ensure fyne in go.sum
+        run: go get fyne.io/fyne/v2@v2.4.5
+
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Build (server, cli, tray)
+        run: |
+          mkdir -p build/linux
+          go build -o build/linux/xconnect .
+          go build -o build/linux/xconnect-cli ./cmd/cli
+          CGO_ENABLED=1 go build -o build/linux/xconnect-tray ./cmd/tray
+          chmod +x build/linux/*
+
+      - name: Set version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "VERSION=dev.${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Package deb and rpm
+        run: |
+          mkdir -p release
+          export VERSION=${{ steps.version.outputs.VERSION }}
+          export GOARCH=amd64
+          nfpm package -f packaging/nfpm.yaml -p deb -t release/
+          nfpm package -f packaging/nfpm.yaml -p rpm -t release/
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          GOARCH: amd64
+
+      - name: Zip Linux binaries
+        run: |
+          cd build/linux && zip -r ../../release/xconnect_${{ steps.version.outputs.VERSION }}_linux_amd64.zip . && cd ../..
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64-${{ steps.version.outputs.VERSION }}
+          path: release/

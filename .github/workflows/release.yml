@@ -124,9 +124,10 @@ jobs:
           light xconnect.wixobj -out "xconnect_${VER}_windows_amd64.msi" -sval
 
       - name: Zip Windows binaries
-        shell: bash
+        shell: pwsh
         run: |
-          zip -j xconnect_${{ steps.version.outputs.VERSION }}_windows_amd64.zip xconnect.exe xconnect-cli.exe xconnect-tray.exe
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          Compress-Archive -Path xconnect.exe, xconnect-cli.exe, xconnect-tray.exe -DestinationPath "xconnect_${ver}_windows_amd64.zip"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
