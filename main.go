@@ -11,24 +11,46 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
+	"github.com/xconnect/xconnect-go/internal/daemon"
 	"github.com/xconnect/xconnect-go/internal/discovery"
 	"github.com/xconnect/xconnect-go/internal/server"
 	clipsync "github.com/xconnect/xconnect-go/internal/sync"
 )
 
 var (
-	addr        = flag.String("addr", ":8315", "address to listen on")
-	useTsnet    = flag.Bool("tsnet", false, "use embedded Tailscale (tsnet); if false, assume system Tailscale")
-	hostname    = flag.String("hostname", "xconnect", "hostname on tailnet (used when -tsnet)")
-	authKey     = flag.String("authkey", "", "Tailscale auth key (used when -tsnet); or set TS_AUTHKEY")
-	enableSync  = flag.Bool("sync", false, "enable clipboard auto-sync: broadcast local copy to other devices")
+	addr         = flag.String("addr", ":8315", "address to listen on")
+	useTsnet     = flag.Bool("tsnet", false, "use embedded Tailscale (tsnet); if false, assume system Tailscale")
+	hostname     = flag.String("hostname", "xconnect", "hostname on tailnet (used when -tsnet)")
+	authKey      = flag.String("authkey", "", "Tailscale auth key (used when -tsnet); or set TS_AUTHKEY")
+	enableSync   = flag.Bool("sync", false, "enable clipboard auto-sync: broadcast local copy to other devices")
 	syncInterval = flag.Duration("sync-interval", time.Second, "clipboard poll interval when -sync")
-	apiToken    = flag.String("api-token", "", "Tailscale API token for peer discovery (or TAILSCALE_API_TOKEN)")
-	peersList   = flag.String("peers", "", "comma-separated peer hostnames or IPs (overrides discovery when -sync)")
+	apiToken     = flag.String("api-token", "", "Tailscale API token for peer discovery (or TAILSCALE_API_TOKEN)")
+	peersList    = flag.String("peers", "", "comma-separated peer hostnames or IPs (overrides discovery when -sync)")
+	daemonMode   = flag.Bool("daemon", false, "run in background (service mode); logs to file")
+	logFile      = flag.String("log-file", "", "log file path (default: platform-specific, e.g. %%LocalAppData%%\\XConnect\\logs on Windows)")
 )
 
 func main() {
 	flag.Parse()
+
+	// Daemon: parent starts child and exits; child runs with stderr = log file
+	if *daemonMode && !daemon.IsDaemonChild() {
+		if err := daemon.RunInBackground(*logFile); err != nil {
+			log.Fatalf("daemon: %v", err)
+		}
+		return
+	}
+	if daemon.IsDaemonChild() {
+		log.SetOutput(os.Stderr)
+		log.SetFlags(log.Ldate | log.Ltime)
+	} else if *logFile != "" {
+		f, err := daemon.SetupLog(*logFile, true)
+		if err != nil {
+			log.Fatalf("log-file: %v", err)
+		}
+		defer f.Close()
+	}
+
 	if err := run(); err != nil {
 		log.Fatal(err)
 	}

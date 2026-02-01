@@ -1,0 +1,26 @@
+# Example systemd user service for XConnect (Linux).
+# Copy to ~/.config/systemd/user/xconnect.service and run:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now xconnect
+#
+# Or for system-wide: /etc/systemd/system/xconnect.service
+#   systemctl daemon-reload && systemctl enable --now xconnect
+
+[Unit]
+Description=XConnect clipboard/file sync over Tailscale
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Replace with your actual path and flags (e.g. -sync -daemon or just -sync)
+ExecStart=/path/to/xconnect -sync
+Restart=on-failure
+RestartSec=5
+# Log to journal; or add -log-file /var/log/xconnect.log (requires writable path)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xconnect
+
+[Install]
+WantedBy=default.target

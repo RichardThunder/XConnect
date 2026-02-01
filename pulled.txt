@@ -1,0 +1,1 @@
+curl -s http://macbookpro:8315/clipboard >> pulled.txt && cat pulled.txtcurl -s http://macbookpro:8315/clipboard >> pulled.txt && cat pulled.txtks on macOS, Linux, and Windows.

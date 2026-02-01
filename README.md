@@ -54,6 +54,29 @@ When you copy on one device, automatically broadcast to other Tailscale devices:
 
 Run `./xconnect -sync` on each device; when you copy on any device, others receive the content and write it to their clipboard.
 
+**Service mode (run in background, with logging):**
+
+Run as a background process; logs are written to a file. Works on Linux, macOS, and Windows.
+
+```bash
+./xconnect -daemon
+# Starts a detached process. Logs go to a platform-specific path:
+#   Windows: %LocalAppData%\XConnect\logs\xconnect.log
+#   Linux/macOS: ~/.local/state/xconnect/xconnect.log (or $XDG_STATE_HOME/xconnect/xconnect.log)
+```
+
+Optional: specify log file and combine with other flags:
+
+```bash
+./xconnect -daemon -sync -log-file /var/log/xconnect.log
+# Or on Windows: -log-file "C:\Logs\xconnect.log"
+```
+
+- **Linux/macOS:** The process is started in a new session (`setsid`); it does not receive terminal signals from the parent.
+- **Windows:** The process is started with `DETACHED_PROCESS | CREATE_NO_WINDOW` (no console window, runs independently).
+
+To run as a system service, use your OS mechanism (e.g. systemd unit on Linux, launchd on macOS, Task Scheduler or NSSM on Windows) and run `xconnect -log-file <path>` (or `-daemon` once, then the service manager can start the binary without `-daemon` and redirect stdout/stderr to a log file).
+
 ## CLI usage
 
 ```bash
