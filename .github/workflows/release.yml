@@ -67,7 +67,6 @@ jobs:
 
       - name: Zip Linux binaries
         run: |
-          mkdir -p release
           cd build/linux && zip -r ../../release/xconnect_${{ steps.version.outputs.VERSION }}_linux_amd64.zip . && cd ../..
 
       - name: Upload Linux artifacts
@@ -90,7 +89,7 @@ jobs:
       - name: Go mod tidy
         run: go mod tidy
 
-      - name: Ensure fyne in go.sum (Windows)
+      - name: Ensure fyne in go.sum
         run: go get fyne.io/fyne/v2@v2.4.5
 
       - name: Build (server, cli, tray)
@@ -109,9 +108,8 @@ jobs:
         run: |
           WIX="C:/Program Files (x86)/WiX Toolset v3.11/bin"
           if [ -d "$WIX" ]; then echo "$WIX" >> $GITHUB_PATH; fi
-          # 备用路径（较新 runner 可能）
-          for v in v3.14 v3.13 v3.12; do
-            W="C:/Program Files (x86)/WiX Toolset $v/bin"
+          for ver in v3.14 v3.13 v3.12; do
+            W="C:/Program Files (x86)/WiX Toolset $ver/bin"
             if [ -d "$W" ]; then echo "$W" >> $GITHUB_PATH; fi
           done
 
@@ -119,7 +117,12 @@ jobs:
         shell: bash
         run: |
           VER="${{ steps.version.outputs.VERSION }}"
-          VERWIX="${VER}.0"
+          # MSI 要求版本为 x.x.x.x（每段 0-65534 整数），非语义化 tag 用占位
+          if [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERWIX="${VER}.0"
+          else
+            VERWIX="0.0.0.1"
+          fi
           candle -dVersion="$VERWIX" -arch x64 packaging/windows/xconnect.wxs -out xconnect.wixobj
           light xconnect.wixobj -out "xconnect_${VER}_windows_amd64.msi" -sval
 

@@ -60,7 +60,7 @@ jobs:
           if [ -n "${{ github.event.inputs.version }}" ]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" = "push" ]; then
-            echo "VERSION=dev.${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+            echo "VERSION=dev.${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
           else
             echo "VERSION=dev" >> $GITHUB_OUTPUT
           fi
