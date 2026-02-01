@@ -1,7 +1,7 @@
 # 推送 tag v* 时自动构建 Windows / macOS / Linux 安装包并发布到 GitHub Release
 # - Linux: deb, rpm（nfpm）+ zip
 # - Windows: MSI（WiX）+ zip
-# - macOS: .pkg（官方安装器）+ zip（amd64 + arm64 各一份）
+# - macOS: .pkg（官方安装器）+ zip（仅 arm64）
 
 name: Release
 
@@ -144,7 +144,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
 
@@ -179,8 +179,17 @@ jobs:
           cp xconnect xconnect-cli xconnect-tray packaging/darwin/root/usr/local/bin/
           cp packaging/darwin/xconnect-autostart packaging/darwin/root/usr/local/bin/
           cp packaging/darwin/com.xconnect.bin.plist packaging/darwin/root/Library/LaunchAgents/
-          cp -R packaging/darwin/XConnect.app packaging/darwin/root/Applications/
-          chmod +x packaging/darwin/root/usr/local/bin/xconnect-autostart packaging/darwin/root/Applications/XConnect.app/Contents/MacOS/XConnect packaging/darwin/scripts/postinstall
+          # 在 CI 中显式创建 XConnect.app，避免 cp -R 因仓库结构/权限导致缺失
+          APP_DIR="packaging/darwin/root/Applications/XConnect.app/Contents"
+          mkdir -p "$APP_DIR/MacOS"
+          [ -f packaging/darwin/XConnect.app/Contents/Info.plist ] && cp packaging/darwin/XConnect.app/Contents/Info.plist "$APP_DIR/"
+          [ -f packaging/darwin/XConnect.app/Contents/MacOS/XConnect ] && cp packaging/darwin/XConnect.app/Contents/MacOS/XConnect "$APP_DIR/MacOS/" || true
+          if [ ! -f "$APP_DIR/MacOS/XConnect" ]; then
+            echo '#!/bin/bash' > "$APP_DIR/MacOS/XConnect"
+            echo 'exec /usr/local/bin/xconnect-autostart' >> "$APP_DIR/MacOS/XConnect"
+          fi
+          chmod +x packaging/darwin/root/usr/local/bin/xconnect-autostart packaging/darwin/scripts/postinstall
+          chmod +x "$APP_DIR/MacOS/XConnect" 2>/dev/null || true
 
       - name: Build macOS .pkg installer
         run: |
@@ -219,7 +228,6 @@ jobs:
           mkdir -p release-staging
           cp -v artifacts/linux-amd64/* release-staging/ 2>/dev/null || true
           cp -v artifacts/windows-amd64/* release-staging/ 2>/dev/null || true
-          cp -v artifacts/darwin-amd64/* release-staging/ 2>/dev/null || true
           cp -v artifacts/darwin-arm64/* release-staging/ 2>/dev/null || true
           ls -la release-staging/
 
