@@ -1,0 +1,208 @@
+# 推送 tag v* 时自动构建 Windows / macOS / Linux 安装包并发布到 GitHub Release
+# - Linux: deb, rpm（nfpm）+ zip
+# - Windows: MSI（WiX）+ zip
+# - macOS: .pkg（官方安装器）+ zip（amd64 + arm64 各一份）
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: '1.22'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Fyne (CGO) build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev libxkbcommon-dev
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Build (server, cli, tray)
+        run: |
+          mkdir -p build/linux
+          go build -o build/linux/xconnect .
+          go build -o build/linux/xconnect-cli ./cmd/cli
+          CGO_ENABLED=1 go build -o build/linux/xconnect-tray ./cmd/tray
+          chmod +x build/linux/*
+
+      - name: Set version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Package deb and rpm
+        run: |
+          mkdir -p release
+          export VERSION=${{ steps.version.outputs.VERSION }}
+          export GOARCH=amd64
+          nfpm package -f packaging/nfpm.yaml -p deb -t release/
+          nfpm package -f packaging/nfpm.yaml -p rpm -t release/
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          GOARCH: amd64
+
+      - name: Zip Linux binaries
+        run: |
+          mkdir -p release
+          cd build/linux && zip -r ../../release/xconnect_${{ steps.version.outputs.VERSION }}_linux_amd64.zip . && cd ../..
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64
+          path: release/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+
+      - name: Build (server, cli, tray)
+        run: |
+          go build -o xconnect.exe .
+          go build -o xconnect-cli.exe ./cmd/cli
+          $env:CGO_ENABLED = "1"; go build -o xconnect-tray.exe ./cmd/tray
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Add WiX to PATH
+        shell: bash
+        run: |
+          WIX="C:/Program Files (x86)/WiX Toolset v3.11/bin"
+          if [ -d "$WIX" ]; then echo "$WIX" >> $GITHUB_PATH; fi
+          # 备用路径（较新 runner 可能）
+          for v in v3.14 v3.13 v3.12; do
+            W="C:/Program Files (x86)/WiX Toolset $v/bin"
+            if [ -d "$W" ]; then echo "$W" >> $GITHUB_PATH; fi
+          done
+
+      - name: Build MSI
+        shell: bash
+        run: |
+          VER="${{ steps.version.outputs.VERSION }}"
+          VERWIX="${VER}.0"
+          candle -dVersion="$VERWIX" -arch x64 packaging/windows/xconnect.wxs -out xconnect.wixobj
+          light xconnect.wixobj -out "xconnect_${VER}_windows_amd64.msi" -sval
+
+      - name: Zip Windows binaries
+        shell: bash
+        run: |
+          zip -j xconnect_${{ steps.version.outputs.VERSION }}_windows_amd64.zip xconnect.exe xconnect-cli.exe xconnect-tray.exe
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: |
+            xconnect_*_windows_amd64.msi
+            xconnect_*_windows_amd64.zip
+
+  build-darwin:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+
+      - name: Build (server, cli, tray)
+        env:
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 1
+        run: |
+          go build -o xconnect .
+          go build -o xconnect-cli ./cmd/cli
+          go build -o xconnect-tray ./cmd/tray
+
+      - name: Set version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Prepare pkg root
+        run: |
+          mkdir -p packaging/darwin/root/usr/local/bin
+          cp xconnect xconnect-cli xconnect-tray packaging/darwin/root/usr/local/bin/
+          chmod +x packaging/darwin/scripts/postinstall
+
+      - name: Build macOS .pkg installer
+        run: |
+          VER="${{ steps.version.outputs.VERSION }}"
+          pkgbuild --root packaging/darwin/root \
+            --identifier com.xconnect.bin \
+            --version "$VER" \
+            --scripts packaging/darwin/scripts \
+            --install-location / \
+            "xconnect_${VER}_darwin_${{ matrix.arch }}.pkg"
+
+      - name: Zip macOS binaries
+        run: |
+          zip -r "xconnect_${{ steps.version.outputs.VERSION }}_darwin_${{ matrix.arch }}.zip" xconnect xconnect-cli xconnect-tray
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-${{ matrix.arch }}
+          path: |
+            xconnect_*_darwin_${{ matrix.arch }}.pkg
+            xconnect_*_darwin_${{ matrix.arch }}.zip
+
+  release:
+    needs: [build-linux, build-windows, build-darwin]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Flatten artifacts for release
+        run: |
+          mkdir -p release-staging
+          cp -v artifacts/linux-amd64/* release-staging/ 2>/dev/null || true
+          cp -v artifacts/windows-amd64/* release-staging/ 2>/dev/null || true
+          cp -v artifacts/darwin-amd64/* release-staging/ 2>/dev/null || true
+          cp -v artifacts/darwin-arm64/* release-staging/ 2>/dev/null || true
+          ls -la release-staging/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          generate_release_notes: true
+          files: release-staging/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

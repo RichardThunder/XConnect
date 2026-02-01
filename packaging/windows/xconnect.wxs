@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?define UpgradeCode = "B7E9E8A1-9C4D-4E2F-8A3B-1D5E6F7A8B9C" ?>
+  <Product Id="*" UpgradeCode="$(var.UpgradeCode)" Version="$(var.Version)" Language="1033"
+           Name="XConnect" Manufacturer="XConnect">
+    <Package InstallerVersion="300" Compressed="yes" Platform="x64" />
+    <Media Id="1" Cabinet="xconnect.cab" EmbedCab="yes" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="XConnect" />
+      </Directory>
+    </Directory>
+
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="xconnect.exe" Guid="A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D">
+        <File Id="xconnect.exe" Source="xconnect.exe" KeyPath="yes" Checksum="yes" />
+      </Component>
+      <Component Id="xconnect-cli.exe" Guid="B2C3D4E5-F6A7-5B6C-9D0E-1F2A3B4C5D6E">
+        <File Id="xconnect-cli.exe" Source="xconnect-cli.exe" KeyPath="yes" Checksum="yes" />
+      </Component>
+      <Component Id="xconnect-tray.exe" Guid="C3D4E5F6-A7B8-6C7D-0E1F-2A3B4C5D6E7F">
+        <File Id="xconnect-tray.exe" Source="xconnect-tray.exe" KeyPath="yes" Checksum="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="MainApplication" Title="XConnect" Level="1">
+      <ComponentRef Id="xconnect.exe" />
+      <ComponentRef Id="xconnect-cli.exe" />
+      <ComponentRef Id="xconnect-tray.exe" />
+    </Feature>
+  </Product>
+</Wix>

@@ -1,0 +1,27 @@
+# nFPM 配置：生成 deb / rpm（Linux）
+# 版本由 CI 通过环境变量 VERSION 传入（如 1.0.0，不要带 v 前缀）
+# 二进制需放在 build/linux/ 下，CI 中会先构建再执行 nfpm
+
+name: xconnect
+arch: ${GOARCH}
+platform: linux
+version: ${VERSION}
+version_schema: semver
+release: 1
+section: default
+priority: optional
+maintainer: XConnect <noreply@example.com>
+description: |
+  Cross-device clipboard, file, and message sync over Tailscale.
+  Server (xconnect), CLI (xconnect-cli), and tray GUI (xconnect-tray).
+vendor: XConnect
+homepage: https://github.com/xconnect/xconnect-go
+license: MIT
+
+contents:
+  - src: build/linux/xconnect
+    dst: /usr/bin/xconnect
+  - src: build/linux/xconnect-cli
+    dst: /usr/bin/xconnect-cli
+  - src: build/linux/xconnect-tray
+    dst: /usr/bin/xconnect-tray

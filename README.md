@@ -36,6 +36,23 @@ make build-linux    # linux/amd64 → dist/linux-amd64/
 
 托盘应用 (Fyne) 需 CGO，建议在目标系统上直接 `make tray` 或 `go build -o xconnect-tray ./cmd/tray`。Linux 下同一二进制在 X11 与 Wayland 下均可运行（由 Fyne/GLFW 根据环境选择）。
 
+## Releases & 安装包
+
+推送 **tag**（如 `v1.0.0`）到 GitHub 会触发 [Release 工作流](.github/workflows/release.yml)，自动构建并发布到 [Releases](https://github.com/xconnect/xconnect-go/releases)：
+
+| 平台 | 产物 | 安装方式 |
+|------|------|----------|
+| **Linux** | `.deb`、`.rpm`、`*_linux_amd64.zip` | `sudo dpkg -i xconnect_*_amd64.deb`（Debian/Ubuntu）或 `sudo rpm -i xconnect_*_amd64.rpm`（Fedora/RHEL）；或解压 zip 到 PATH |
+| **Windows** | **`.msi`**（官方安装器）、`*_windows_amd64.zip` | 双击 `xconnect_*_windows_amd64.msi` 安装到「Program Files\XConnect」；或解压 zip 使用 |
+| **macOS** | **`.pkg`**（官方安装器）、`*_darwin_amd64.zip`、`*_darwin_arm64.zip` | 双击 `xconnect_*_darwin_*.pkg` 安装到 `/usr/local/bin`；或解压 zip 使用 |
+
+触发发布（需有仓库写权限）：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## Run the server
 
 **Using system Tailscale (default):**

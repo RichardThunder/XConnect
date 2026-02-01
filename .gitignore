@@ -2,3 +2,4 @@ xconnect
 xconnect-cli
 xconnect-tray
 dist/
+packaging/darwin/root/
