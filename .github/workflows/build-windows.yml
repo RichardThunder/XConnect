@@ -70,7 +70,12 @@ jobs:
         shell: bash
         run: |
           VER="${{ steps.version.outputs.VERSION }}"
-          VERWIX="${VER}.0"
+          # MSI 要求版本为 x.x.x.x（每段 0-65534 整数），dev.xxx 等非法，用占位
+          if [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERWIX="${VER}.0"
+          else
+            VERWIX="0.0.0.1"
+          fi
           candle -dVersion="$VERWIX" -arch x64 packaging/windows/xconnect.wxs -out xconnect.wixobj
           light xconnect.wixobj -out "xconnect_${VER}_windows_amd64.msi" -sval
 
