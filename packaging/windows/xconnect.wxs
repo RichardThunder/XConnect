@@ -28,14 +28,14 @@
       <Component Id="xconnect.exe" Guid="A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D">
         <File Id="xconnect.exe" Source="xconnect.exe" KeyPath="yes" Checksum="yes" />
       </Component>
-      <Component Id="xconnect-cli.exe" Guid="B2C3D4E5-F6A7-5B6C-9D0E-1F2A3B4C5D6E">
-        <File Id="xconnect-cli.exe" Source="xconnect-cli.exe" KeyPath="yes" Checksum="yes" />
+      <Component Id="xconnect_cli_exe" Guid="B2C3D4E5-F6A7-5B6C-9D0E-1F2A3B4C5D6E">
+        <File Id="xconnect_cli_exe" Source="xconnect-cli.exe" KeyPath="yes" Checksum="yes" />
       </Component>
-      <Component Id="xconnect-tray.exe" Guid="C3D4E5F6-A7B8-6C7D-0E1F-2A3B4C5D6E7F">
-        <File Id="xconnect-tray.exe" Source="xconnect-tray.exe" KeyPath="yes" Checksum="yes" />
+      <Component Id="xconnect_tray_exe" Guid="C3D4E5F6-A7B8-6C7D-0E1F-2A3B4C5D6E7F">
+        <File Id="xconnect_tray_exe" Source="xconnect-tray.exe" KeyPath="yes" Checksum="yes" />
       </Component>
-      <Component Id="xconnect-start.cmd" Guid="D4E5F6A7-B8C9-7D0E-1F2A-3B4C5D6E7F8A">
-        <File Id="xconnect-start.cmd" Source="packaging/windows/xconnect-start.cmd" KeyPath="yes" />
+      <Component Id="xconnect_start_cmd" Guid="D4E5F6A7-B8C9-7D0E-1F2A-3B4C5D6E7F8A">
+        <File Id="xconnect_start_cmd" Source="packaging/windows/xconnect-start.cmd" KeyPath="yes" />
       </Component>
     </DirectoryRef>
 
@@ -49,9 +49,9 @@
 
     <Feature Id="MainApplication" Title="XConnect" Level="1">
       <ComponentRef Id="xconnect.exe" />
-      <ComponentRef Id="xconnect-cli.exe" />
-      <ComponentRef Id="xconnect-tray.exe" />
-      <ComponentRef Id="xconnect-start.cmd" />
+      <ComponentRef Id="xconnect_cli_exe" />
+      <ComponentRef Id="xconnect_tray_exe" />
+      <ComponentRef Id="xconnect_start_cmd" />
       <ComponentRef Id="StartupShortcut" />
     </Feature>
   </Product>

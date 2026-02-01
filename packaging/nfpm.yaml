@@ -28,6 +28,6 @@ contents:
   - src: packaging/linux/xconnect-autostart
     dst: /usr/bin/xconnect-autostart
     file_info:
-      mode: "0755"
+      mode: 0o755
   - src: packaging/linux/xconnect.desktop
     dst: /etc/xdg/autostart/xconnect.desktop

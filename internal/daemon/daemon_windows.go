@@ -3,7 +3,6 @@
 package daemon
 
 import (
-	"os/exec"
 	"syscall"
 )
 
