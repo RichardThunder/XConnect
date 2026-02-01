@@ -1,0 +1,89 @@
+# 单独构建 Windows（MSI + zip），使用所选分支的最新代码
+# 用法：Actions → "Build Windows" → Run workflow，选择分支后运行
+
+name: Build Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（用于包名，如 1.0.0 或 dev）'
+        required: false
+        default: 'dev'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'packaging/**'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: go.sum
+
+      - name: Go mod tidy
+        run: go mod tidy
+
+      - name: Ensure fyne in go.sum
+        run: go get fyne.io/fyne/v2@v2.4.5
+
+      - name: Build (server, cli, tray)
+        run: |
+          go build -o xconnect.exe .
+          go build -o xconnect-cli.exe ./cmd/cli
+          $env:CGO_ENABLED = "1"; go build -o xconnect-tray.exe ./cmd/tray
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "VERSION=dev.${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add WiX to PATH
+        shell: bash
+        run: |
+          WIX="C:/Program Files (x86)/WiX Toolset v3.11/bin"
+          if [ -d "$WIX" ]; then echo "$WIX" >> $GITHUB_PATH; fi
+          for ver in v3.14 v3.13 v3.12; do
+            W="C:/Program Files (x86)/WiX Toolset $ver/bin"
+            if [ -d "$W" ]; then echo "$W" >> $GITHUB_PATH; fi
+          done
+
+      - name: Build MSI
+        shell: bash
+        run: |
+          VER="${{ steps.version.outputs.VERSION }}"
+          VERWIX="${VER}.0"
+          candle -dVersion="$VERWIX" -arch x64 packaging/windows/xconnect.wxs -out xconnect.wixobj
+          light xconnect.wixobj -out "xconnect_${VER}_windows_amd64.msi" -sval
+
+      - name: Zip Windows binaries
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          Compress-Archive -Path xconnect.exe, xconnect-cli.exe, xconnect-tray.exe -DestinationPath "xconnect_${ver}_windows_amd64.zip"
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64-${{ steps.version.outputs.VERSION }}
+          path: |
+            xconnect_*_windows_amd64.msi
+            xconnect_*_windows_amd64.zip
