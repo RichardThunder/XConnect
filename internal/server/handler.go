@@ -11,17 +11,26 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/atotto/clipboard"
+	"github.com/xconnect/xconnect-go/internal/clipboard"
 )
 
 const defaultFileDir = "xconnect-files"
 
+// HandlerOpts optionally configures the handler (e.g. for clipboard sync).
+type HandlerOpts struct {
+	// OnClipboardReceivedFromNetwork is called when we write clipboard content received from a peer.
+	// Used by sync to avoid re-broadcasting that content.
+	OnClipboardReceivedFromNetwork func(content string)
+}
+
 // NewHandler returns an http.Handler for the xconnect API.
-func NewHandler() http.Handler {
+// If opts is nil, no optional behaviour is used.
+func NewHandler(opts *HandlerOpts) http.Handler {
 	mux := http.NewServeMux()
 	h := &handler{
 		fileDir: defaultFileDir,
-		files:   make(map[string]string), // id -> path
+		files:   make(map[string]string),
+		opts:    opts,
 	}
 	mux.HandleFunc("GET /clipboard", h.getClipboard)
 	mux.HandleFunc("POST /clipboard", h.postClipboard)
@@ -36,6 +45,7 @@ type handler struct {
 	fileDir string
 	mu      sync.Mutex
 	files   map[string]string
+	opts    *HandlerOpts
 }
 
 func (h *handler) getClipboard(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +72,9 @@ func (h *handler) postClipboard(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			if h.opts != nil && h.opts.OnClipboardReceivedFromNetwork != nil {
+				h.opts.OnClipboardReceivedFromNetwork(t)
+			}
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
@@ -73,9 +86,13 @@ func (h *handler) postClipboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := clipboard.WriteAll(string(body)); err != nil {
+	content := string(body)
+	if err := clipboard.WriteAll(content); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if h.opts != nil && h.opts.OnClipboardReceivedFromNetwork != nil {
+		h.opts.OnClipboardReceivedFromNetwork(content)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -210,7 +227,7 @@ func (h *handler) postMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	// Write to clipboard as the "message" delivery
 	if req.Text != "" {
-		clipboard.WriteAll(req.Text)
+		_ = clipboard.WriteAll(req.Text)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/atotto/clipboard"
+	"github.com/xconnect/xconnect-go/internal/clipboard"
 	"github.com/xconnect/xconnect-go/internal/discovery"
 )
 

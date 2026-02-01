@@ -6,6 +6,11 @@ Cross-device clipboard, file, and message sync over [Tailscale](https://tailscal
 
 - **Mode 1 (recommended):** Install [Tailscale](https://tailscale.com/download) on each device and log in. Enable MagicDNS in the admin console.
 - **Mode 2:** No system Tailscale required; the server can embed Tailscale via tsnet (use `-tsnet` and an auth key).
+- **Clipboard (Linux):** On Linux, XConnect needs a clipboard utility. If you see "No clipboard utilities available", run:
+  ```bash
+  ./scripts/install-clipboard-deps.sh
+  ```
+  Or install manually: **xclip** (e.g. `sudo dnf install xclip` on Fedora), **xsel**, or **wl-clipboard** (Wayland). Windows and macOS use system APIs and need no extra install.
 
 ## Build
 
@@ -33,6 +38,21 @@ go build -o xconnect-cli ./cmd/cli
 # First run: open the printed auth URL in a browser to join the tailnet.
 # Or: TS_AUTHKEY=tskey-auth-xxx ./xconnect -tsnet -hostname my-device
 ```
+
+**Clipboard auto-sync (no manual pull):**
+
+When you copy on one device, automatically broadcast to other Tailscale devices:
+
+```bash
+./xconnect -sync
+# Peers are discovered via `tailscale status --json`. Optionally:
+#   -hostname my-mac        use this name as "self" when excluding from peer list
+#   -peers "linux,win"     comma-separated peer hostnames (skip discovery)
+#   -sync-interval 1s      poll clipboard interval (default 1s)
+#   -api-token ...         or TAILSCALE_API_TOKEN for API-based discovery
+```
+
+Run `./xconnect -sync` on each device; when you copy on any device, others receive the content and write it to their clipboard.
 
 ## CLI usage
 
@@ -65,6 +85,16 @@ go build -o xconnect-cli ./cmd/cli
 | GET | /ws | WebSocket (placeholder) |
 
 Port default: **8315**.
+
+## Clipboard dependencies (Linux / Windows)
+
+| Platform | Notes |
+|----------|--------|
+| **Linux** | Needs **xclip**, **xsel**, or **wl-clipboard** (Wayland). Run `./scripts/install-clipboard-deps.sh` to auto-install for Fedora, Debian/Ubuntu, Arch, openSUSE. |
+| **Windows** | Uses Win32 API; no extra install. Run as the logged-in user (not a headless service) for clipboard access. |
+| **macOS** | Uses system APIs; no extra install. |
+
+If clipboard read/write fails, the error message includes install hints for your OS.
 
 ## Testing
 

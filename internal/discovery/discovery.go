@@ -29,6 +29,35 @@ func Devices(ctx context.Context, apiToken string) ([]Device, error) {
 	return nil, fmt.Errorf("device discovery: run 'tailscale status --json' or set TAILSCALE_API_TOKEN")
 }
 
+// SelfAndPeers returns the self device hostname and the list of peer devices (excluding self).
+// Uses tailscale status --json when available; selfHost is empty when using API (caller can pass -hostname).
+func SelfAndPeers(ctx context.Context, apiToken string) (selfHost string, peers []Device, err error) {
+	out, err := tailscaleStatus(ctx)
+	if err != nil {
+		if apiToken != "" {
+			all, err := tailscaleAPI(ctx, apiToken)
+			if err != nil {
+				return "", nil, err
+			}
+			return "", all, nil
+		}
+		return "", nil, err
+	}
+	var s statusJSON
+	if err := json.Unmarshal(out, &s); err != nil {
+		return "", nil, err
+	}
+	selfHost = s.Self.HostName
+	for _, p := range s.Peer {
+		d := Device{HostName: p.HostName, Addrs: p.TailscaleIPs}
+		if len(p.TailscaleIPs) > 0 {
+			d.IP = p.TailscaleIPs[0]
+		}
+		peers = append(peers, d)
+	}
+	return selfHost, peers, nil
+}
+
 func tailscaleStatus(ctx context.Context) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "tailscale", "status", "--json")
 	out, err := cmd.Output()
