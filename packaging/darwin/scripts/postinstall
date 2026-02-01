@@ -1,3 +1,4 @@
 #!/bin/bash
-# 安装后确保二进制与启动脚本可执行
+# 安装后确保二进制、启动脚本与应用程序可执行
 chmod 755 /usr/local/bin/xconnect /usr/local/bin/xconnect-cli /usr/local/bin/xconnect-tray /usr/local/bin/xconnect-autostart 2>/dev/null || true
+chmod 755 /Applications/XConnect.app/Contents/MacOS/XConnect 2>/dev/null || true

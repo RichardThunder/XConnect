@@ -44,7 +44,7 @@ make build-linux    # linux/amd64 → dist/linux-amd64/
 |------|------|----------|
 | **Linux** | `.deb`、`.rpm`、`*_linux_amd64.zip` | `sudo dpkg -i xconnect_*_amd64.deb`（Debian/Ubuntu）或 `sudo rpm -i xconnect_*_amd64.rpm`（Fedora/RHEL）；或解压 zip 到 PATH |
 | **Windows** | **`.msi`**（官方安装器）、`*_windows_amd64.zip` | 双击 `xconnect_*_windows_amd64.msi` 安装到「Program Files\XConnect」；或解压 zip 使用 |
-| **macOS** | **`.pkg`**（官方安装器）、`*_darwin_amd64.zip`、`*_darwin_arm64.zip` | 双击 `xconnect_*_darwin_*.pkg` 安装到 `/usr/local/bin`；或解压 zip 使用 |
+| **macOS** | **`.pkg`**（官方安装器）、`*_darwin_amd64.zip`、`*_darwin_arm64.zip` | 双击 pkg 安装：**应用程序** 中出现 **XConnect**（/Applications/XConnect.app），命令行工具在 `/usr/local/bin`；或解压 zip 使用 |
 
 **安装后自动行为（deb/rpm、msi、pkg）：**
 
