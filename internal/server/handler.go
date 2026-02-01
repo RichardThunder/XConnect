@@ -10,11 +10,15 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/xconnect/xconnect-go/internal/clipboard"
 )
 
-const defaultFileDir = "xconnect-files"
+const (
+	defaultFileDir      = "xconnect-files"
+	clipboardHistorySize = 50
+)
 
 // HandlerOpts optionally configures the handler (e.g. for clipboard sync).
 type HandlerOpts struct {
@@ -28,12 +32,14 @@ type HandlerOpts struct {
 func NewHandler(opts *HandlerOpts) http.Handler {
 	mux := http.NewServeMux()
 	h := &handler{
-		fileDir: defaultFileDir,
-		files:   make(map[string]string),
-		opts:    opts,
+		fileDir:  defaultFileDir,
+		files:    make(map[string]string),
+		opts:     opts,
+		clipHist: make([]ClipboardHistoryEntry, 0, clipboardHistorySize),
 	}
 	mux.HandleFunc("GET /clipboard", h.getClipboard)
 	mux.HandleFunc("POST /clipboard", h.postClipboard)
+	mux.HandleFunc("GET /clipboard/history", h.getClipboardHistory)
 	mux.HandleFunc("POST /files", h.postFiles)
 	mux.HandleFunc("GET /files/", h.getFile)
 	mux.HandleFunc("POST /message", h.postMessage)
@@ -41,11 +47,19 @@ func NewHandler(opts *HandlerOpts) http.Handler {
 	return mux
 }
 
+// ClipboardHistoryEntry is one item in clipboard history (for GUI).
+type ClipboardHistoryEntry struct {
+	Content  string    `json:"content"`
+	FromHost string    `json:"from_host"`
+	At       time.Time `json:"at"`
+}
+
 type handler struct {
-	fileDir string
-	mu      sync.Mutex
-	files   map[string]string
-	opts    *HandlerOpts
+	fileDir   string
+	mu        sync.Mutex
+	files     map[string]string
+	opts      *HandlerOpts
+	clipHist  []ClipboardHistoryEntry
 }
 
 func (h *handler) getClipboard(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +72,29 @@ func (h *handler) getClipboard(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(text))
 }
 
+func fromHost(r *http.Request) string {
+	if s := r.Header.Get("X-From-Host"); s != "" {
+		return strings.TrimSpace(s)
+	}
+	addr := r.RemoteAddr
+	if i := strings.LastIndex(addr, ":"); i >= 0 {
+		addr = addr[:i]
+	}
+	return addr
+}
+
+func (h *handler) appendClipboardHistory(content, fromHost string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	entry := ClipboardHistoryEntry{Content: content, FromHost: fromHost, At: time.Now().UTC()}
+	h.clipHist = append(h.clipHist, entry)
+	if len(h.clipHist) > clipboardHistorySize {
+		h.clipHist = h.clipHist[len(h.clipHist)-clipboardHistorySize:]
+	}
+}
+
 func (h *handler) postClipboard(w http.ResponseWriter, r *http.Request) {
+	fromHost := fromHost(r)
 	ct := r.Header.Get("Content-Type")
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		// Optional: image or file in form
@@ -72,6 +108,7 @@ func (h *handler) postClipboard(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			h.appendClipboardHistory(t, fromHost)
 			if h.opts != nil && h.opts.OnClipboardReceivedFromNetwork != nil {
 				h.opts.OnClipboardReceivedFromNetwork(t)
 			}
@@ -91,10 +128,24 @@ func (h *handler) postClipboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	h.appendClipboardHistory(content, fromHost)
 	if h.opts != nil && h.opts.OnClipboardReceivedFromNetwork != nil {
 		h.opts.OnClipboardReceivedFromNetwork(content)
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *handler) getClipboardHistory(w http.ResponseWriter, r *http.Request) {
+	h.mu.Lock()
+	list := make([]ClipboardHistoryEntry, len(h.clipHist))
+	copy(list, h.clipHist)
+	h.mu.Unlock()
+	// Reverse so newest first
+	for i, j := 0, len(list)-1; i < j; i, j = i+1, j-1 {
+		list[i], list[j] = list[j], list[i]
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
 }
 
 type fileResponse struct {

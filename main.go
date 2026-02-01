@@ -145,12 +145,14 @@ func run() error {
 			s, _ := clipboard.ReadAll()
 			return s
 		}
+		getFromHost := func() string { return selfHost }
 		go clipsync.ClipboardSync(ctx, clipsync.Options{
 			Interval:        *syncInterval,
 			GetClipboard:   getClipboard,
 			GetLastReceived: lastReceived.Get,
-			GetPeers:       getPeers,
-			HTTPClient:     &http.Client{Timeout: 10 * time.Second},
+			GetPeers:        getPeers,
+			GetFromHost:     getFromHost,
+			HTTPClient:      &http.Client{Timeout: 10 * time.Second},
 		})
 		log.Printf("clipboard auto-sync enabled (broadcast to peers on copy)")
 	}

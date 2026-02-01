@@ -20,7 +20,21 @@ go build -o xconnect .
 
 # CLI client (push/pull clipboard, send messages, list devices)
 go build -o xconnect-cli ./cmd/cli
+
+# 托盘 GUI（系统托盘 + 剪贴板历史窗口，需 CGO）
+go build -o xconnect-tray ./cmd/tray
+# 或：make server cli tray
 ```
+
+**跨平台构建（服务与 CLI）：**
+
+```bash
+make build-darwin   # darwin/amd64 + darwin/arm64 → dist/darwin-*/
+make build-windows  # windows/amd64 → dist/windows-amd64/
+make build-linux    # linux/amd64 → dist/linux-amd64/
+```
+
+托盘应用 (Fyne) 需 CGO，建议在目标系统上直接 `make tray` 或 `go build -o xconnect-tray ./cmd/tray`。Linux 下同一二进制在 X11 与 Wayland 下均可运行（由 Fyne/GLFW 根据环境选择）。
 
 ## Run the server
 
@@ -77,6 +91,24 @@ Optional: specify log file and combine with other flags:
 
 To run as a system service, use your OS mechanism (e.g. systemd unit on Linux, launchd on macOS, Task Scheduler or NSSM on Windows) and run `xconnect -log-file <path>` (or `-daemon` once, then the service manager can start the binary without `-daemon` and redirect stdout/stderr to a log file).
 
+## 托盘 GUI (xconnect-tray)
+
+在后台运行 xconnect 后，可启动托盘应用，从系统托盘打开主窗口查看剪贴板历史（内容 + 来源机器）。
+
+```bash
+# 先启动服务（本机或远程，默认连 http://127.0.0.1:8315）
+./xconnect -sync
+
+# 再启动托盘（需图形环境）
+./xconnect-tray
+```
+
+- **托盘：** 点击托盘图标打开菜单，「显示主窗口」打开/显示窗口，「退出」退出应用。
+- **主窗口：** 显示从本地 xconnect 服务拉取的剪贴板历史；每条显示内容预览与来源主机。可通过「刷新」按钮重新拉取。
+- **环境变量：** `XCONNECT_API=http://host:8315` 可指定 xconnect API 地址（默认 `http://127.0.0.1:8315`）。
+
+支持 macOS、Windows、Linux（X11 / Wayland）。
+
 ## CLI usage
 
 ```bash
@@ -101,7 +133,8 @@ To run as a system service, use your OS mechanism (e.g. systemd unit on Linux, l
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | /clipboard | Get remote clipboard (text) |
-| POST | /clipboard | Set remote clipboard (body = text) |
+| POST | /clipboard | Set remote clipboard (body = text); optional header `X-From-Host` for history |
+| GET | /clipboard/history | JSON array of recent clipboard entries (content, from_host, at) |
 | POST | /files | Upload file (multipart), returns `file_id` |
 | GET | /files/:id | Download file |
 | POST | /message | JSON `{"text":"..."}` — sets peer clipboard |

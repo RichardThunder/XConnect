@@ -3,6 +3,7 @@ module github.com/xconnect/xconnect-go
 go 1.22.0
 
 require (
+	fyne.io/fyne/v2 v2.4.5
 	github.com/atotto/clipboard v0.1.4
 	tailscale.com v1.68.0
 )

@@ -51,6 +51,11 @@ func ClipboardSync(ctx context.Context, opts Options) {
 				continue
 			}
 			req.Header.Set("Content-Type", "text/plain; charset=utf-8")
+			if opts.GetFromHost != nil {
+				if from := opts.GetFromHost(); from != "" {
+					req.Header.Set("X-From-Host", from)
+				}
+			}
 			resp, err := opts.HTTPClient.Do(req)
 			if err != nil {
 				log.Printf("sync: POST %s: %v", url, err)
@@ -71,9 +76,10 @@ func ClipboardSync(ctx context.Context, opts Options) {
 
 // Options configures ClipboardSync.
 type Options struct {
-	Interval       time.Duration
-	GetClipboard   func() string
-	GetLastReceived func() string
-	GetPeers       func() []string
-	HTTPClient     *http.Client
+	Interval         time.Duration
+	GetClipboard     func() string
+	GetLastReceived  func() string
+	GetPeers         func() []string
+	GetFromHost      func() string // hostname to send in X-From-Host when broadcasting
+	HTTPClient       *http.Client
 }
