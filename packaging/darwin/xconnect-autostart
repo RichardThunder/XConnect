@@ -1,0 +1,11 @@
+#!/bin/sh
+# 登录后自动启动：后台运行 xconnect -daemon -sync，再启动托盘
+# 由 launchd com.xconnect.bin 调用
+
+PATH="/usr/local/bin:$PATH"
+export PATH
+
+# 先启动同步服务（后台）
+xconnect -daemon -sync &
+# 再启动托盘
+exec xconnect-tray

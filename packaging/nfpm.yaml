@@ -25,3 +25,9 @@ contents:
     dst: /usr/bin/xconnect-cli
   - src: build/linux/xconnect-tray
     dst: /usr/bin/xconnect-tray
+  - src: packaging/linux/xconnect-autostart
+    dst: /usr/bin/xconnect-autostart
+    file_info:
+      mode: "0755"
+  - src: packaging/linux/xconnect.desktop
+    dst: /etc/xdg/autostart/xconnect.desktop

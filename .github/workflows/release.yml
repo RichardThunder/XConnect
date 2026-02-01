@@ -153,9 +153,11 @@ jobs:
 
       - name: Prepare pkg root
         run: |
-          mkdir -p packaging/darwin/root/usr/local/bin
+          mkdir -p packaging/darwin/root/usr/local/bin packaging/darwin/root/Library/LaunchAgents
           cp xconnect xconnect-cli xconnect-tray packaging/darwin/root/usr/local/bin/
-          chmod +x packaging/darwin/scripts/postinstall
+          cp packaging/darwin/xconnect-autostart packaging/darwin/root/usr/local/bin/
+          cp packaging/darwin/com.xconnect.bin.plist packaging/darwin/root/Library/LaunchAgents/
+          chmod +x packaging/darwin/root/usr/local/bin/xconnect-autostart packaging/darwin/scripts/postinstall
 
       - name: Build macOS .pkg installer
         run: |

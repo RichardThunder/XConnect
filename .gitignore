@@ -3,3 +3,5 @@ xconnect-cli
 xconnect-tray
 dist/
 packaging/darwin/root/
+pulled.txt
+.DS_Store

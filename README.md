@@ -46,6 +46,12 @@ make build-linux    # linux/amd64 → dist/linux-amd64/
 | **Windows** | **`.msi`**（官方安装器）、`*_windows_amd64.zip` | 双击 `xconnect_*_windows_amd64.msi` 安装到「Program Files\XConnect」；或解压 zip 使用 |
 | **macOS** | **`.pkg`**（官方安装器）、`*_darwin_amd64.zip`、`*_darwin_arm64.zip` | 双击 `xconnect_*_darwin_*.pkg` 安装到 `/usr/local/bin`；或解压 zip 使用 |
 
+**安装后自动行为（deb/rpm、msi、pkg）：**
+
+- **Linux**：安装 `/etc/xdg/autostart/xconnect.desktop`，用户登录图形会话后自动运行「xconnect -daemon -sync」并启动托盘。
+- **Windows**：在「所有用户」启动文件夹创建快捷方式，用户登录后自动运行同步服务（-daemon -sync）并启动托盘。
+- **macOS**：安装 launchd 用户代理到 `/Library/LaunchAgents/com.xconnect.bin.plist`，用户登录图形会话（Aqua）后自动运行同步与托盘。
+
 触发发布（需有仓库写权限）：
 
 ```bash

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=XConnect
+Comment=Clipboard sync over Tailscale and system tray
+Exec=/usr/bin/xconnect-autostart
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-KDE-autostart-after=panel
